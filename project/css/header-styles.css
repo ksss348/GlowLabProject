@@ -1,0 +1,299 @@
+/* =========================
+   ROOT VARIABLES
+========================= */
+:root {
+   --brand-pink: #b76e79;
+   --brand-purple: #A495CB;
+   --light-pink: #fdf4f7;
+   --dark-grey: #333;
+   --soft-grey: #777;
+   --border-color: #eee;
+}
+
+/* =========================
+   MAIN HEADER WRAPPER
+========================= */
+.main-header {
+   width: 100%;
+   background: #fff;
+   position: sticky;
+   top: 0;
+   z-index: 1000;
+   transition: box-shadow 0.3s ease;
+}
+
+.main-header.scrolled {
+   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+/* =========================
+   HEADER TOP BAR
+========================= */
+.header-top {
+   max-width: 1400px;
+   margin: 0 auto;
+   padding: 2rem 3rem;
+   display: grid;
+   grid-template-columns: 240px 1fr 240px;
+   align-items: center;
+   gap: 3rem;
+   border-bottom: 1px solid rgba(183, 110, 121, 0.12);
+}
+
+/* =========================
+   LOGO
+========================= */
+.logo {
+   font-size: 2.2rem;
+   font-weight: 800;
+   letter-spacing: 1px;
+   text-decoration: none;
+   background: linear-gradient(135deg, var(--brand-pink), var(--brand-purple));
+   -webkit-background-clip: text;
+   -webkit-text-fill-color: transparent;
+   transition: transform 0.3s ease;
+}
+
+.logo:hover {
+   transform: scale(1.05);
+}
+
+/* =========================
+   SEARCH BOX
+========================= */
+.search-box {
+   display: flex;
+   align-items: center;
+   width: 100%;
+   max-width: 600px;
+   margin: 0 auto;
+   background: #f8f8f8;
+   border-radius: 50px;
+   border: 2px solid transparent;
+   overflow: hidden;
+   transition: all 0.3s ease;
+}
+
+.search-box:focus-within {
+   background: #fff;
+   border-color: var(--brand-pink);
+   box-shadow: 0 8px 25px rgba(183, 110, 121, 0.15);
+}
+
+.search-box input {
+   flex: 1;
+   border: none;
+   outline: none;
+   padding: 1.4rem 2.5rem;
+   font-size: 1.5rem;
+   background: transparent;
+   color: var(--dark-grey);
+}
+
+.search-box input::placeholder {
+   color: #999;
+}
+
+.search-box button {
+   background: linear-gradient(135deg, var(--brand-pink), #a55b66);
+   border: none;
+   padding: 1.4rem 3.5rem;
+   color: #fff;
+   font-size: 1.5rem;
+   font-weight: 600;
+   cursor: pointer;
+   transition: all 0.3s ease;
+   position: relative;
+   overflow: hidden;
+}
+
+.search-box button:hover {
+   background: linear-gradient(135deg, #a55b66, #944f5a);
+}
+
+/* Ripple hover */
+.search-box button::before {
+   content: '';
+   position: absolute;
+   top: 50%;
+   left: 50%;
+   width: 0;
+   height: 0;
+   border-radius: 50%;
+   background: rgba(255,255,255,0.25);
+   transform: translate(-50%, -50%);
+   transition: width 0.6s, height 0.6s;
+}
+
+.search-box button:hover::before {
+   width: 320px;
+   height: 320px;
+}
+
+/* =========================
+   CART ICON
+========================= */
+.cart-icon {
+   display: flex;
+   justify-content: flex-end;
+}
+
+.cart-icon a {
+   display: flex;
+   align-items: center;
+   gap: 1rem;
+   padding: 1.2rem 2.5rem;
+   border-radius: 50px;
+   text-decoration: none;
+   font-size: 1.5rem;
+   font-weight: 600;
+   color: var(--dark-grey);
+   background: linear-gradient(135deg, var(--light-pink), #f7ecf0);
+   border: 2px solid transparent;
+   position: relative;
+   transition: all 0.3s ease;
+}
+
+.cart-icon a:hover {
+   background: #fff;
+   border-color: var(--brand-pink);
+   transform: translateY(-2px);
+   box-shadow: 0 8px 20px rgba(183, 110, 121, 0.2);
+}
+
+/* Cart icon emoji fallback */
+.fi-rs-shopping-cart::before {
+   content: "🛒";
+   font-style: normal;
+   font-size: 2.1rem;
+}
+
+/* =========================
+   CART COUNT BADGE
+========================= */
+.pro-count {
+   position: absolute;
+   top: -6px;
+   right: 8px;
+   min-width: 24px;
+   height: 24px;
+   padding: 0.2rem 0.6rem;
+   background: linear-gradient(135deg, var(--brand-pink), var(--brand-purple));
+   color: #fff;
+   font-size: 1.2rem;
+   font-weight: 700;
+   border-radius: 50%;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   box-shadow: 0 4px 12px rgba(183, 110, 121, 0.4);
+   animation: pulse 2s ease-in-out infinite;
+   pointer-events: none;
+}
+
+@keyframes pulse {
+   0%,100% { transform: scale(1); }
+   50% { transform: scale(1.1); }
+}
+
+/* =========================
+   CATEGORY NAV
+========================= */
+.category-nav {
+   background: linear-gradient(135deg, var(--light-pink), #f7ecf0);
+   border-top: 1px solid rgba(183,110,121,0.1);
+}
+
+.category-nav ul {
+   max-width: 1400px;
+   margin: 0 auto;
+   padding: 0;
+   display: flex;
+   justify-content: center;
+   flex-wrap: wrap;
+   list-style: none;
+}
+
+.category-nav ul li a {
+   display: block;
+   padding: 1.5rem 2.5rem;
+   font-size: 1.5rem;
+   font-weight: 600;
+   color: var(--dark-grey);
+   text-decoration: none;
+   border-radius: 14px;
+   position: relative;
+   transition: all 0.3s ease;
+}
+
+.category-nav ul li a::before {
+   content: '';
+   position: absolute;
+   bottom: 8px;
+   left: 50%;
+   width: 0;
+   height: 3px;
+   background: linear-gradient(90deg, var(--brand-pink), var(--brand-purple));
+   transform: translateX(-50%);
+   border-radius: 10px;
+   transition: width 0.3s ease;
+}
+
+.category-nav ul li a:hover,
+.category-nav ul li a.active {
+   color: var(--brand-pink);
+   background: rgba(183,110,121,0.08);
+}
+
+.category-nav ul li a:hover::before,
+.category-nav ul li a.active::before {
+   width: 60%;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+@media (max-width: 1024px) {
+   .header-top {
+      grid-template-columns: 200px 1fr 200px;
+      padding: 1.5rem 2rem;
+   }
+}
+
+@media (max-width: 768px) {
+   .header-top {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      text-align: center;
+   }
+
+   .cart-icon {
+      justify-content: center;
+   }
+
+   .category-nav ul {
+      justify-content: flex-start;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+   }
+
+   .category-nav ul li a {
+      white-space: nowrap;
+      padding: 1.2rem 1.6rem;
+   }
+}
+
+@media (max-width: 480px) {
+   .logo {
+      font-size: 1.8rem;
+   }
+
+   .search-box input {
+      font-size: 1.3rem;
+   }
+
+   .search-box button {
+      font-size: 1.3rem;
+      padding: 1.2rem 2rem;
+   }
+}
