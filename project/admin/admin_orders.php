@@ -1,169 +1,189 @@
 <?php
 // 1. Database Connection
 $conn = new mysqli("localhost", "root", "", "skincare_shop");
+if ($conn->connect_error) { die("Connection failed: " . $conn->connect_error); }
 
-// ❌ Column မရှိရင် အလိုအလျောက် ထည့်ခိုင်းမယ့် ကုဒ်
-$conn->query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'Pending'");
+// 2. Ensure required columns exist
+$schemaMessages = [];
+$check = $conn->query("SHOW COLUMNS FROM orders LIKE 'payment_proof'");
+if ($check->num_rows === 0) {
+    $conn->query("ALTER TABLE orders ADD COLUMN payment_proof VARCHAR(255) NULL");
+    $schemaMessages[] = 'Added payment_proof column';
+}
+$check = $conn->query("SHOW COLUMNS FROM orders LIKE 'status'");
+if ($check->num_rows === 0) {
+    $conn->query("ALTER TABLE orders ADD COLUMN status VARCHAR(20) DEFAULT 'Pending'");
+    $schemaMessages[] = 'Added status column';
+}
 
-// ✅ Confirm Logic
-if (isset($_GET['confirm_id'])) {
-    $c_id = (int)$_GET['confirm_id'];
-    $conn->query("UPDATE orders SET status = 'Confirmed' WHERE id = $c_id");
-    header("Location: admin_orders.php"); 
+// 3. Action Logic
+if (isset($_GET['confirm_order'])) {
+    $id = (int)$_GET['confirm_order'];
+    $conn->query("UPDATE orders SET status = 'Confirmed' WHERE id = $id");
+    header("Location: admin_orders.php");
     exit();
 }
 
-// ❌ Delete Logic
-if (isset($_GET['delete_id'])) {
-    $d_id = (int)$_GET['delete_id'];
-    $conn->query("DELETE FROM order_items WHERE order_id = $d_id");
-    $conn->query("DELETE FROM orders WHERE id = $d_id");
+if (isset($_GET['delete_order'])) {
+    $id = (int)$_GET['delete_order'];
+    $conn->query("DELETE FROM orders WHERE id = $id");
     header("Location: admin_orders.php");
     exit();
 }
 ?>
-
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Admin - Order History</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlowLab | Premium Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    
     <style>
-        :root {
-            --pink: #ff85a2;
-            --pink-light: #fff0f3;
-            --dark: #2d3436;
-            --gray: #636e72;
-            --green: #2ecc71;
-            --red: #ff4757;
-            --transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
-        }
-
-        body { font-family: 'Segoe UI', sans-serif; background: #fdf2f4; padding: 40px; color: var(--dark); }
-        h2 { color: var(--dark); font-size: 28px; margin-bottom: 30px; animation: fadeInDown 0.8s ease; }
-
-        .order-card { 
-            background: #fff; padding: 25px; border-radius: 20px; margin-bottom: 25px; 
-            box-shadow: 0 10px 20px rgba(0,0,0,0.03); border: 1px solid rgba(255,133,162,0.1);
-            transition: var(--transition); animation: slideUp 0.6s ease-out forwards; opacity: 0;
-        }
-
-        .order-card:hover { transform: translateY(-8px); box-shadow: 0 15px 30px rgba(255,133,162,0.15); border-color: var(--pink); }
-
-        .status-badge { padding: 6px 16px; border-radius: 50px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #fff; }
-        .status-pending { background: var(--pink); box-shadow: 0 4px 10px rgba(255,133,162,0.3); }
-        .status-confirmed { background: var(--green); box-shadow: 0 4px 10px rgba(46,204,113,0.3); }
-
-        .admin-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
-        .btn-action { cursor: pointer; border: none; text-decoration: none; padding: 8px 18px; border-radius: 30px; font-size: 13px; font-weight: bold; transition: var(--transition); display: inline-flex; align-items: center; gap: 5px; }
-        .btn-confirm { background: var(--green); color: white; }
-        .btn-delete { background: var(--pink-light); color: var(--red); }
+        :root { --primary: #ff85a2; --dark: #2c3e50; --bg: #f8f9fa; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; display: flex; color: #333; }
         
-        .btn-confirm:hover { transform: scale(1.05); box-shadow: 0 5px 15px rgba(46,204,113,0.3); }
-        .btn-delete:hover { background: var(--red); color: white; transform: scale(1.05); }
+        .sidebar { width: 280px; height: 100vh; background: var(--dark); color: white; position: fixed; z-index: 1000; }
+        .logo-area { padding: 30px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .logo-area h2 { color: var(--primary); margin: 0; }
+        .nav-links a { display: flex; align-items: center; color: #bdc3c7; padding: 15px 30px; text-decoration: none; transition: 0.3s; }
+        .nav-links a.active { background: rgba(255,133,162,0.1); color: var(--primary); border-left: 4px solid var(--primary); }
 
-        .item-row { display: flex; align-items: center; gap: 15px; padding: 12px 10px; border-radius: 12px; transition: var(--transition); }
-        .item-row:hover { background: var(--pink-light); padding-left: 20px; }
-        .item-row img { border-radius: 10px; object-fit: cover; }
+        .main { margin-left: 280px; padding: 40px; width: calc(100% - 280px); }
+        .content-box { background: white; border-radius: 25px; padding: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.02); }
+
+        table { width: 100%; border-collapse: separate; border-spacing: 0 12px; }
+        th { padding: 15px 20px; text-align: left; color: #888; font-size: 12px; text-transform: uppercase; }
+        td { padding: 15px 20px; background: #fff; border-top: 1px solid #f1f1f1; border-bottom: 1px solid #f1f1f1; vertical-align: middle; }
+        tr td:first-child { border-left: 1px solid #f1f1f1; border-radius: 15px 0 0 15px; }
+        tr td:last-child { border-right: 1px solid #f1f1f1; border-radius: 0 15px 15px 0; }
+
+        .proof-img { width: 50px; height: 50px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 1px solid #eee; transition: 0.3s; }
+        .proof-img:hover { transform: scale(1.1); }
         
-        .total-price { text-align: right; margin-top: 15px; color: var(--pink); font-size: 1.3rem; font-weight: bold; }
-
-        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        /* Status Badge Colors */
+        .status-badge { padding: 6px 14px; border-radius: 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; display: inline-block; }
+        .status-badge.confirmed { background: #e8f5e9; color: #2e7d32; }
+        .status-badge.pending { background: #fff3e0; color: #ef6c00; }
+        
+        .btn { border: none; padding: 8px 12px; border-radius: 10px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+        .btn-check { background: #e3f2fd; color: #1976d2; }
+        .btn-trash { background: #ffebee; color: #c62828; margin-left: 5px; }
     </style>
 </head>
 <body>
 
-    <h2><i class="fa fa-shopping-bag" style="color:var(--pink);"></i> Incoming Orders</h2>
-
-    <?php
-    $orders = $conn->query("SELECT * FROM orders ORDER BY id DESC");
-    $delay = 0;
-    while($o = $orders->fetch_assoc()):
-        $current_status = isset($o['status']) ? $o['status'] : 'Pending';
-        $delay += 0.1;
-    ?>
-    <div class="order-card" style="animation-delay: <?= $delay ?>s">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h4 style="font-size: 1.1rem;">
-                <span style="color:var(--pink);">Order #<?= $o['id'] ?></span> - <?= htmlspecialchars($o['customer_name']) ?>
-            </h4>
-            <span class="status-badge <?= (strtolower($current_status) == 'confirmed') ? 'status-confirmed' : 'status-pending' ?>">
-                <i class="fa <?= (strtolower($current_status) == 'confirmed') ? 'fa-check-circle' : 'fa-clock' ?>"></i> 
-                <?= $current_status ?>
-            </span>
-        </div>
-        
-        <p style="color:var(--gray); font-size: 0.95rem; margin: 10px 0;">
-            <i class="fa fa-phone" style="width:20px; color:var(--pink);"></i> <?= htmlspecialchars($o['phone']) ?> <br>
-            <i class="fa fa-map-marker" style="width:20px; color:var(--pink);"></i> <?= htmlspecialchars($o['address']) ?>
-        </p>
-        
-        <div style="margin-top:20px; border-top: 1px solid #f0f0f0; padding-top: 10px;">
-            <?php
-            $o_id = $o['id'];
-            $items = $conn->query("SELECT oi.*, p.name, p.image_url FROM order_items oi 
-                                   JOIN products p ON oi.product_id = p.id 
-                                   WHERE oi.order_id = $o_id");
-            while($item = $items->fetch_assoc()): ?>
-                <div class="item-row">
-                    <img src="<?= $item['image_url'] ?>" width="45" height="45">
-                    <span style="font-weight: 500;"><?= htmlspecialchars($item['name']) ?></span>
-                    <span style="margin-left:auto; font-weight: 600; color:var(--gray);"><?= number_format($item['price']) ?> MMK</span>
-                </div>
-            <?php endwhile; ?>
-        </div>
-        
-        <div class="total-price"><?= number_format($o['total_price']) ?> MMK</div>
-
-        <div class="admin-actions">
-            <?php if(strtolower($current_status) == 'pending'): ?>
-                <a href="javascript:void(0)" 
-                   onclick="confirmAction('confirm', <?= $o['id'] ?>)" 
-                   class="btn-action btn-confirm">
-                    <i class="fa fa-check"></i> Confirm Order
-                </a>
-            <?php endif; ?>
-            <a href="javascript:void(0)" 
-               onclick="confirmAction('delete', <?= $o['id'] ?>)" 
-               class="btn-action btn-delete">
-                <i class="fa fa-trash"></i> Delete
-            </a>
-        </div>
+<div class="sidebar">
+    <div class="logo-area"><h2>GLOWLAB</h2></div>
+    <div class="nav-links">
+        <a href="?view=bookings"><i class="fas fa-calendar-check"></i> Bookings</a>
+        <a href="?view=orders" class="active"><i class="fas fa-shopping-bag"></i> Orders List</a>
+        <a href="../logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a>
     </div>
-    <?php endwhile; ?>
+</div>
 
-    <script>
-    function confirmAction(type, id) {
-        let title = type === 'delete' ? 'ဖျက်မှာ သေချာလား?' : 'Order ကို Confirm လုပ်မှာလား?';
-        let icon = type === 'delete' ? 'warning' : 'question';
-        let confirmColor = type === 'delete' ? '#ff4757' : '#2ecc71';
-        let btnText = type === 'delete' ? 'ဖျက်မည်' : 'သေချာသည်';
+<div class="main">
+    <div class="header" style="margin-bottom: 30px;">
+        <h1>Dashboard Overview</h1>
+        <p style="color: #888;"><?php echo date("F d, Y"); ?></p>
+        <?php if (!empty($schemaMessages)): ?>
+            <div style="margin-top:10px; padding:8px 12px; background:#fff3cd; border:1px solid #ffeeba; border-radius:6px; color:#856404; font-size:14px;">
+                <?php echo implode(' · ', $schemaMessages); ?>
+            </div>
+        <?php endif; ?>
+    </div>
 
-        Swal.fire({
-            title: title,
-            text: type === 'delete' ? "ပြန်ယူလို့ ရတော့မှာ မဟုတ်ပါဘူး!" : "Status ကို Confirm ပြောင်းလိုက်ပါမယ်။",
-            icon: icon,
-            showCancelButton: true,
-            confirmButtonColor: confirmColor,
-            cancelButtonColor: '#636e72',
-            confirmButtonText: btnText,
-            cancelButtonText: 'မလုပ်တော့ပါ',
-            background: '#fff',
-            borderRadius: '20px',
-            customClass: {
-                popup: 'my-swal-popup'
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                // PHP သို့ လှမ်းပို့မည့် URL
-                window.location.href = `?${type}_id=${id}`;
-            }
-        })
-    }
-    </script>
+    <div class="content-box">
+        <h3 class="view-title" style="margin-bottom: 20px;">Customer Orders</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Customer Name</th>
+                    <th>Contact & Address</th>
+                    <th>Proof</th>
+                    <th>Total Price</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                $orders = $conn->query("SELECT * FROM orders ORDER BY id DESC");
+                while($o = $orders->fetch_assoc()):
+                    $status = !empty($o['status']) ? $o['status'] : 'Pending';
+                    $img_name = $o['payment_proof'];
+                ?>
+                <tr>
+                    <td>#<?php echo $o['id']; ?></td>
+                    <td style="font-weight:600;"><?php echo htmlspecialchars($o['customer_name']); ?></td>
+                    <td>
+                        <div style="font-size:13px;"><i class="fas fa-phone" style="color:var(--primary); width:20px;"></i> <?php echo htmlspecialchars($o['phone']); ?></div>
+                        <div style="font-size:12px; color:#888;"><i class="fas fa-map-marker-alt" style="color:var(--primary); width:20px;"></i> <?php echo htmlspecialchars($o['address']); ?></div>
+                    </td>
+                    <td>
+                        <?php if(!empty($img_name)): 
+                            $final_path = (strpos($img_name, 'uploaded_img') === 0) ? '../' . $img_name : $img_name;
+                        ?>
+                            <img src="<?php echo htmlspecialchars($final_path); ?>" 
+                                 class="proof-img" 
+                                 onclick="viewImage('<?php echo htmlspecialchars($final_path); ?>')"
+                                 onerror="this.src='https://via.placeholder.com/50?text=Error'">
+                        <?php else: ?>
+                            <span style="color:#bbb; font-size:11px;"><i class="fas fa-hand-holding-dollar"></i> COD</span>
+                        <?php endif; ?>
+                    </td>
+                    <td style="font-weight:700; color:var(--primary);"><?php echo number_format($o['total_price']); ?> MMK</td>
+                    <td>
+                        <span class="status-badge <?php echo strtolower($status); ?>">
+                            <?php echo $status; ?>
+                        </span>
+                    </td>
+                    <td>
+                        <div class="action-btns" style="display: flex;">
+                            <?php if(strtolower($status) !== 'confirmed'): ?>
+                                <a href="?confirm_order=<?php echo $o['id']; ?>" class="btn btn-check" title="Confirm Order">
+                                    <i class="fas fa-check"></i>
+                                </a>
+                            <?php endif; ?>
+                            <button onclick="confirmDelete('admin_orders.php?delete_order=<?php echo $o['id']; ?>')" class="btn btn-trash" title="Delete Order">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                <?php endwhile; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
 
+<script>
+function viewImage(url) {
+    Swal.fire({
+        imageUrl: url,
+        imageAlt: 'Payment Proof',
+        showConfirmButton: false,
+        showCloseButton: true,
+        customClass: {
+            image: 'rounded-lg'
+        }
+    });
+}
+
+function confirmDelete(url) {
+    Swal.fire({
+        title: 'Are you sure?',
+        text: "This order will be removed permanently!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ff85a2',
+        cancelButtonColor: '#2c3e50',
+        confirmButtonText: 'Yes, Delete!'
+    }).then((result) => {
+        if (result.isConfirmed) { window.location.href = url; }
+    });
+}
+</script>
 </body>
-</html>ss
+</html>
